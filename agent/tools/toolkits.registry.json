@@ -1,0 +1,176 @@
+{
+  "version": 1,
+  "toolkits": [
+    {
+      "name": "sql_query_toolkit",
+      "title": "Universal SQL Query Toolkit",
+      "description": "Toolkit universal para executar consultas SQL nos datasources vinculados ao template ativo. Use quando a resposta depender de buscar dados estruturados em banco. Suporta PostgreSQL, MySQL, MariaDB, SQL Server, SQLite, Athena e BigQuery. As credenciais sao obtidas do proprio template ativo, sem depender de .env.",
+      "module": "agent.tools.sql_query_toolkit",
+      "class": "SQLQueryToolkit",
+      "enabled": true,
+      "functions": [
+        {
+          "name": "run_sql_query",
+          "method": "run_sql_query",
+          "description": "Executa uma query SQL em um datasource do template ativo. Esta eh uma tool de leitura primaria e sempre materializa um dataset artifact no storage para reuso por outras tools. Parametros: sql (obrigatorio, query completa em texto), engine (opcional: postgresql, mysql, mariadb, sqlserver, sqlite, athena ou bigquery), datasource_name (opcional, nome do datasource no template), datasource_id (opcional, id exato do datasource), template_key ou tenant_key (opcional, para carregar o template no Redis), max_rows (opcional, default 100). Retorno: string JSON com success, rows, columns, preview e artifact."
+        },
+        {
+          "name": "describe_datasources",
+          "method": "describe_datasources",
+          "description": "Lista os datasources disponiveis no template ativo sem expor secrets. Use esta tool quando precisar descobrir quais conexoes existem antes de montar uma query SQL. Parametros: template_key ou tenant_key (opcional). Retorno: string JSON com success e datasources, contendo id, name, kind, description e config segura de cada datasource."
+        }
+      ]
+    },
+    {
+      "name": "document_processing_toolkit",
+      "title": "Document Processing Toolkit",
+      "description": "Toolkit de leitura e consulta de documentos com RAG sob demanda. Use quando a pergunta depender do conteudo de arquivos anexados, PDFs, DOCX, TXT, planilhas ou arquivos padrao configurados no proprio agente via rag_files. Nao existe mais RAG automatico no boot; esta tool so roda quando chamada.",
+      "module": "agent.tools.document_processing_toolkit",
+      "class": "DocumentProcessingToolkit",
+      "enabled": true,
+      "functions": [
+        {
+          "name": "query_documents",
+          "method": "query_documents",
+          "description": "Responde perguntas sobre documentos usando RAG somente quando chamada. Esta eh uma tool de leitura primaria e salva um document artifact no storage para reuso posterior por python, chart, report ou outras tools. Parametros: query (obrigatorio), files ou uploaded_files ou file_paths (opcional), max_chunks (opcional). Retorno: string JSON com success, answer, files e artifact."
+        }
+      ]
+    },
+    {
+      "name": "image_processing_toolkit",
+      "title": "Image Processing Toolkit",
+      "description": "Toolkit multimodal para interpretar imagens, prints, scans, graficos em imagem e fotografias usando o provider configurado no template ativo. Deve usar o ai_service do template para analisar o conteudo visual.",
+      "module": "agent.tools.image_processing_toolkit",
+      "class": "ImageProcessingToolkit",
+      "enabled": true,
+      "functions": [
+        {
+          "name": "analyze_image",
+          "method": "analyze_image",
+          "description": "Analisa imagens anexadas e responde a pergunta sobre elas. Esta eh uma tool de leitura primaria e salva um document artifact no storage para reuso posterior por python ou outras tools. Parametros: question ou message (obrigatorio), uploaded_images ou uploaded_files ou files (obrigatorio quando houver imagem). Retorno: string JSON com success, answer, images e artifact."
+        }
+      ]
+    },
+    {
+      "name": "calculator_toolkit",
+      "title": "Calculator Toolkit",
+      "description": "Calculadora deterministica para expressoes matematicas. Use quando o agente precisar fazer contas com precisao, evitando calculo aproximado pela LLM.",
+      "module": "agent.tools.calculator_toolkit",
+      "class": "CalculatorToolkit",
+      "enabled": true,
+      "functions": [
+        {
+          "name": "calculate",
+          "method": "calculate",
+          "description": "Executa uma expressao matematica com precisao decimal configuravel. Parametros: expression (obrigatorio, expressao aritmetica em sintaxe Python simples, por exemplo 20000 * ((1 + 0.02) ** 24)), precision (opcional, numero de casas decimais). Operacoes esperadas: +, -, *, /, ** e %. Nao envie texto misturado, LaTeX, nomes de variaveis, virgula decimal ou simbolo de porcentagem. Sempre converta percentuais para decimal antes, por exemplo 2% vira 0.02. Retorno: string JSON com success, expression, precision, result e text."
+        }
+      ]
+    },
+    {
+      "name": "forecast_toolkit",
+      "title": "Forecast Toolkit",
+      "description": "Toolkit de previsao temporal com Prophet para series vindas de SQL ou dados enviados diretamente. Use quando precisar projetar valores futuros de uma metrica ao longo do tempo. O toolkit resolve o datasource a partir do template ativo, executa a query, agrega a serie, testa baselines, escolhe a melhor configuracao do Prophet, gera forecast, grafico e Excel.",
+      "module": "agent.tools.forecast_toolkit",
+      "class": "ForecastToolkit",
+      "enabled": true,
+      "functions": [
+        {
+          "name": "generate_forecast",
+          "method": "generate_forecast",
+          "description": "Gera previsao temporal com Prophet a partir de um dataset artifact ou de dados enviados diretamente. Parametros principais: artifact_url ou artifact_id (preferencial), ou data/series como fallback; granularity, horizon, label, date_col e value_col. Retorno: JSON em lista. O primeiro item contem _meta com success, metricas, confidence e links dos artefatos de forecast quando disponiveis."
+        }
+      ]
+    },
+    {
+      "name": "rag_toolkit",
+      "title": "Agent Linked RAG Toolkit",
+      "description": "Toolkit de RAG sob demanda usando apenas arquivos vinculados ao agente atual no template. A LLM informa o nome logico do arquivo, nome original ou id do arquivo vinculado e a tool consulta esse material para responder a pergunta.",
+      "module": "agent.tools.rag_toolkit",
+      "class": "RAGToolkit",
+      "enabled": true,
+      "functions": [
+        {
+          "name": "query_agent_rag",
+          "method": "query_agent_rag",
+          "description": "Consulta arquivos vinculados ao agente atual usando RAG. Esta eh uma tool de leitura primaria e salva um document artifact no storage. Parametros: query (obrigatorio), file_name (opcional), file_names (opcional), max_chunks (opcional). Retorno: string JSON com success, matched_files, answer e artifact."
+        }
+      ]
+    },
+    {
+      "name": "http_api_toolkit",
+      "title": "Flexible HTTP API Toolkit",
+      "description": "Toolkit flexivel para chamadas HTTP externas. Usa secrets vinculados ao agente atual no template e permite injetar a secret em URL, headers, params ou body por placeholder, suportando integracoes GET, POST, PUT, PATCH, DELETE e outras.",
+      "module": "agent.tools.http_api_toolkit",
+      "class": "HTTPAPIToolkit",
+      "enabled": true,
+      "functions": [
+        {
+          "name": "call_http_api",
+          "method": "call_http_api",
+          "description": "Executa chamada HTTP externa. Parametros: method, url, secret_name (opcional, nome da secret vinculada ao agente), headers (opcional, dict ou JSON), body (opcional, dict/list/string ou JSON), params (opcional, dict ou JSON), timeout_seconds (opcional), secret_placeholder (opcional, default {{secret}}). Retorno: string JSON com success, status_code, headers, body_json e body_text."
+        }
+      ]
+    },
+    {
+      "name": "python_sandbox_toolkit",
+      "title": "Python Sandbox Toolkit",
+      "description": "Toolkit para executar codigo Python em subprocesso isolado. Use quando um agente universal precisar calcular, transformar dados ou programar de forma controlada durante a conversa.",
+      "module": "agent.tools.python_sandbox_toolkit",
+      "class": "PythonSandboxToolkit",
+      "enabled": true,
+      "functions": [
+        {
+          "name": "execute_python",
+          "method": "execute_python",
+          "description": "Executa codigo Python em sandbox via subprocesso isolado. Pode receber input_artifact_url ou input_artifact_id e expor no codigo as variaveis input_artifact, df, records, document e document_text. Tambem expõe as funcoes publish_dataset e publish_document para materializar artifacts novos. Parametros: code, timeout_seconds, input_artifact_url, input_artifact_id e output_label. Retorno: string JSON com success, stdout, stderr, result e error."
+        }
+      ]
+    },
+    {
+      "name": "xlsx_report_toolkit",
+      "title": "SQL to XLSX Report Toolkit",
+      "description": "Toolkit para exportar o resultado de uma query SQL para arquivo XLSX e publicar o arquivo no storage do sistema. Use quando a resposta precisar entregar uma planilha pronta para download.",
+      "module": "agent.tools.xlsx_report_toolkit",
+      "class": "XLSXReportToolkit",
+      "enabled": true,
+      "functions": [
+        {
+          "name": "export_sql_to_xlsx",
+          "method": "export_sql_to_xlsx",
+          "description": "Exporta um dataset artifact ou dados diretos para planilha XLSX. Parametros principais: artifact_url ou artifact_id (preferencial), ou data como fallback; label e file_name. Nao acessa datasource. Retorno: string JSON com success, row_count, columns, public_url e metadados do arquivo gerado."
+        }
+      ]
+    },
+    {
+      "name": "chart_toolkit",
+      "title": "Interactive Plotly Chart Toolkit",
+      "description": "Toolkit para gerar graficos interativos Plotly a partir de SQL em um datasource do template ativo. Retorna o objeto JSON do Plotly para o frontend renderizar e tambem gera uma imagem PNG/JPG publicada no storage.",
+      "module": "agent.tools.chart_toolkit",
+      "class": "ChartToolkit",
+      "enabled": true,
+      "functions": [
+        {
+          "name": "generate_chart",
+          "method": "generate_chart",
+          "description": "Gera grafico Plotly a partir de um dataset artifact ou de dados diretos. Parametros principais: artifact_url ou artifact_id (preferencial), ou data como fallback; chart_type, label, x_col, y_col, series_col, names_col, values_col e image_format. Nao acessa datasource. Retorno: string JSON com plotly_json e image_public_url."
+        }
+      ]
+    },
+    {
+      "name": "sql_write_toolkit",
+      "title": "SQL Write Toolkit",
+      "description": "Toolkit para operacoes de escrita em banco usando datasource do template ativo. Suporta insert, update e delete com retorno de linhas afetadas e rows de RETURNING quando houver.",
+      "module": "agent.tools.sql_write_toolkit",
+      "class": "SQLWriteToolkit",
+      "enabled": true,
+      "functions": [
+        {
+          "name": "execute_sql_write",
+          "method": "execute_sql_write",
+          "description": "Executa SQL de escrita em datasource do template ativo. Parametros: sql (obrigatorio), engine (opcional), datasource_name ou datasource_id (opcionais), template_key ou tenant_key (opcionais). Aceita insert, update e delete. Retorno: string JSON com success, affected_rows, columns, rows e metadados do datasource."
+        }
+      ]
+    }
+  ],
+  "aliases": {}
+}

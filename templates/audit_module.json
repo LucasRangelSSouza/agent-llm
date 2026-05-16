@@ -1,0 +1,37 @@
+{
+    "Audit": {
+        "submodules": {
+            "audit_agent": {
+                "tools": [
+                    "audit_toolkit.make_tool"
+                ],
+                "allowed_interactions": [
+                    "answer_agent"
+                ],
+                "prompt": "Voce e um agente auditor especializado em Postgres. Responda a pergunta { question} do usuario utilizando somente a ferramenta `audit_tool`. Use sempre a tabela unificada `agent_interactions` e respeite o tenant da requisicao. Quando o usuario perguntar quantas interacoes foram feitas nos ultimos 7 dias ou algo semelhante, gere uma consulta que filtre `tenant_id` corretamente e use `interaction_time::timestamptz >= NOW() - INTERVAL '7 days'`. Em outras perguntas sobre acessos, quantidade ou datas, retorne ate 100 entradas recentes ordenadas por `interaction_time DESC` e deixe que a LLM agregue. Sempre evite GROUP_CONCAT, DATE('now', ...) ou DATETIME('now', ...), e trate `interaction_time` como timestamptz.",
+                "rag_files": [],
+                "type": "AssistantAgent"
+            },
+            "user_proxy_agent": {
+                "tools": [],
+                "allowed_interactions": [
+                    "audit_agent"
+                ],
+                "prompt": "Voce e um assistente de conversa proxy.",
+                "rag_files": [],
+                "type": "UserProxyAgent"
+            },
+            "answer_agent": {
+                "type": "AssistantAgent",
+                "tools": [],
+                "prompt": "Voce e um agente que tem a unica tarefa de responder o input ao usuario final a partir das informacoes recebidas pelos agentes. Caso a resposta esteja incompleta, elabore a resposta para que fique clara. Se a resposta vier de uma tool, responda exatamente o que a tool retornar.",
+                "rag_files": [],
+                "allowed_interactions": [
+                    "user_proxy_agent"
+                ]
+            }
+        },
+        "DB_connections": {},
+        "descricao_mestre": "Modulo de auditoria. Destinado a responder perguntas como: quais as ultimas interacoes no sistema, quais as interacoes com um agente especifico e quais as perguntas feitas por um usuario."
+    }
+}

@@ -1,0 +1,1 @@
+"""Toolkits funcionais do sistema."""

@@ -1,0 +1,1 @@
+"""Infraestrutura compartilhada do runtime."""

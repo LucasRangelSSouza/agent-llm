@@ -1,0 +1,141 @@
+services:
+  free-llm:
+    build:
+      context: ../..
+      dockerfile: free_models/ollama/Dockerfile
+    image: agent-free-llm:latest
+    container_name: agent-free-llm
+    ports:
+      - "11434:11434"
+    env_file:
+      - ../../.env
+    volumes:
+      - free_llm_data:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 30s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: agent-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: agent-postgres
+    environment:
+      POSTGRES_DB: agent_llm
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d agent_llm"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    container_name: agent-minio
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: agentminio
+      MINIO_ROOT_PASSWORD: agentminio123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  agent:
+    build:
+      context: ../..
+      dockerfile: ops/docker/api.Dockerfile
+    image: agent-backend:latest
+    container_name: agent-backend
+    ports:
+      - "8080:8080"
+    env_file:
+      - ../../.env
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_SSL: "false"
+      FILE_STORAGE_ENDPOINT: http://minio:9000
+      FILE_STORAGE_PUBLIC_ENDPOINT: http://localhost:9000
+      FILE_STORAGE_ACCESS_KEY: agentminio
+      FILE_STORAGE_SECRET_KEY: agentminio123
+      FILE_STORAGE_BUCKET: agent-files
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ui:
+    build:
+      context: ../..
+      dockerfile: ops/docker/ui.Dockerfile
+    image: agent-ui:latest
+    container_name: agent-ui
+    ports:
+      - "8090:8090"
+    env_file:
+      - ../../.env
+    environment:
+      UI_DB_HOST: postgres
+      UI_DB_PORT: 5432
+      UI_DB_NAME: agent_llm
+      UI_DB_USER: postgres
+      UI_DB_PASSWORD: postgres
+      AI_API_BASE_URL: http://agent:8080
+      AI_API_ROOT_PATH: quality-digital-financas
+      FILE_STORAGE_ENDPOINT: http://minio:9000
+      FILE_STORAGE_PUBLIC_ENDPOINT: http://localhost:9000
+      FILE_STORAGE_ACCESS_KEY: agentminio
+      FILE_STORAGE_SECRET_KEY: agentminio123
+      FILE_STORAGE_BUCKET: agent-files
+    depends_on:
+      agent:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  free_llm_data:
+  postgres_data:
+  redis_data:
+  minio_data:
